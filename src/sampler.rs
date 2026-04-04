@@ -1,16 +1,23 @@
 //! High-level sampler entry points: `Settings` presets, the parallel `Sampler`,
 //! and `sample_sequentially` for running one or many chains.
 
-use anyhow::{Context, Result, bail};
-use itertools::Itertools;
+use anyhow::Result;
 use nuts_storable::{HasDims, Storable, Value};
 use rand::{Rng, SeedableRng, rngs::ChaCha8Rng};
-use rayon::{ScopeFifo, ThreadPoolBuilder};
 use serde::Serialize;
+use std::{collections::HashMap, fmt::Debug, time::Duration};
+
+#[cfg(not(target_arch = "wasm32"))]
+use anyhow::{Context, bail};
+#[cfg(not(target_arch = "wasm32"))]
+use itertools::Itertools;
+#[cfg(not(target_arch = "wasm32"))]
+use std::ops::Deref;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rayon::{ScopeFifo, ThreadPoolBuilder};
+#[cfg(not(target_arch = "wasm32"))]
 use std::{
-    collections::HashMap,
-    fmt::Debug,
-    ops::Deref,
     sync::{
         Arc, Mutex,
         mpsc::{
@@ -18,7 +25,7 @@ use std::{
         },
     },
     thread::{JoinHandle, spawn},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use crate::{
@@ -27,15 +34,16 @@ use crate::{
     chain::{AdaptStrategy, Chain, NutsChain, StatOptions},
     dynamics::{TransformedHamiltonian, TransformedPointStatsOptions},
     external_adapt_strategy::{ExternalTransformAdaptation, TransformedSettings},
-    model::Model,
     nuts::NutsOptions,
     sampler_stats::{SamplerStats, StatsDims},
-    storage::{ChainStorage, StorageConfig, TraceStorage},
     transform::{
         DiagAdaptStrategy, DiagMassMatrix, ExternalTransformation, LowRankMassMatrix,
         LowRankMassMatrixStrategy, LowRankSettings,
     },
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{model::Model, storage::{ChainStorage, StorageConfig, TraceStorage}};
 
 /// All sampler configurations implement this trait
 pub trait Settings:
@@ -563,11 +571,13 @@ impl ChainProgress {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 enum ChainCommand {
     Resume,
     Pause,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct ChainProcess<T>
 where
     T: TraceStorage,
@@ -577,6 +587,7 @@ where
     progress: Arc<Mutex<ChainProgress>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<T: TraceStorage> ChainProcess<T> {
     fn finalize_many(trace: T, chains: Vec<Self>) -> Result<(Option<anyhow::Error>, T::Finalized)> {
         let finalized_chain_traces = chains
@@ -737,6 +748,7 @@ impl<T: TraceStorage> ChainProcess<T> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
 enum SamplerCommand {
     Pause,
@@ -746,18 +758,21 @@ enum SamplerCommand {
     Inspect,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 enum SamplerResponse<T: Send + 'static> {
     Ok(),
     Progress(Box<[ChainProgress]>),
     Inspect(T),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub enum SamplerWaitResult<F: Send + 'static> {
     Trace(F),
     Timeout(Sampler<F>),
     Err(anyhow::Error, Option<F>),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub struct Sampler<F: Send + 'static> {
     main_thread: JoinHandle<Result<(Option<anyhow::Error>, F)>>,
     commands: SyncSender<SamplerCommand>,
@@ -765,11 +780,13 @@ pub struct Sampler<F: Send + 'static> {
     results: Receiver<Result<()>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub struct ProgressCallback {
     pub callback: Box<dyn FnMut(Duration, Box<[ChainProgress]>) + Send>,
     pub rate: Duration,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<F: Send + 'static> Sampler<F> {
     pub fn new<M, S, C, T>(
         model: M,

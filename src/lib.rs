@@ -123,9 +123,11 @@ pub use model::Model;
 pub use nuts::NutsError;
 pub use sampler::{
     ChainProgress, DiagGradNutsSettings, LowRankNutsSettings, NutsSettings, Progress,
-    ProgressCallback, Sampler, SamplerWaitResult, Settings, TransformedNutsSettings,
+    Settings, TransformedNutsSettings,
     sample_sequentially,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub use sampler::{ProgressCallback, Sampler, SamplerWaitResult};
 pub use sampler_stats::SamplerStats;
 
 pub use external_adapt_strategy::TransformedSettings;
