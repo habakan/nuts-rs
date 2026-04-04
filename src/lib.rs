@@ -111,6 +111,9 @@ mod stepsize;
 mod storage;
 mod transform;
 
+#[cfg(feature = "wasm-ffi")]
+mod wasm_ffi;
+
 pub use nuts_derive::Storable;
 pub use nuts_storable::{DateTimeUnit, HasDims, ItemType, Storable, Value};
 pub use rand;
